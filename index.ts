@@ -96,7 +96,8 @@ const compareAndAlert = async (
       );
       if (closestHistoricalData) {
         const { value: sum } = closestHistoricalData;
-        if (sum > 0) {
+        if (sum > 5) {
+          // ignore small changes
           const diff = totalSum > sum ? totalSum - sum : sum - totalSum;
           const diffPercentage = Number((diff * BigInt(100)) / sum);
           if (diffPercentage > 0) {
