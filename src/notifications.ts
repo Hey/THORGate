@@ -39,7 +39,7 @@ export const notifyPoolChange = (
     .addField("Now", formatNumber(Number(amountAfter) / 1e8), true)
     .addField(
       "Change",
-      formatNumber(Number(amountAfter - amountBefore) / 1e8),
+      `${amountAfter - amountBefore < 0 ? "" : "+"}${formatNumber(Number(amountAfter - amountBefore) / 1e8)}`,
       true,
     )
     .setColor("#FF0000")
@@ -47,7 +47,8 @@ export const notifyPoolChange = (
     .setDescription(
       `**${pool}** pool has changed by **${percentageChange.toFixed(2)}%** compared to** ${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**`,
     )
-    .setTimestamp();
+    .setTimestamp()
+    .setText("@everyone");
 
   return hook.send(embed);
 };
