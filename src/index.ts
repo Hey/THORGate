@@ -13,21 +13,20 @@ const redis = new Redis(
 );
 
 const findClosestTimeKey = async (
-  redis: Redis,
+  redis: Redis.Redis,
   redisKey: string,
   targetTime: number,
   margin = 5,
-): Promise<{ key: string; value: number }> => {
+): Promise<{ key: string; value: bigint }> => {
   const startTime = targetTime - margin * 60000;
   const endTime = targetTime + margin * 60000;
   const pattern = `${redisKey}:time:*`;
   let closestKey = "";
-  let closestValue = 0;
+  let closestValue = BigInt(0);
   let closestDiff = Number.MAX_SAFE_INTEGER;
 
   let cursor = "0";
   do {
-    // use the scan command to iteratively fetch keys matching our pattern
     const [newCursor, keys] = await redis.scan(
       cursor,
       "MATCH",
@@ -45,7 +44,7 @@ const findClosestTimeKey = async (
           const value = await redis.get(key);
           if (value !== null) {
             closestKey = key;
-            closestValue = parseInt(value, 10); // Assuming the value is always an integer
+            closestValue = BigInt(value);
             closestDiff = diff;
           }
         }
@@ -53,10 +52,7 @@ const findClosestTimeKey = async (
     }
   } while (cursor !== "0");
 
-  return {
-    key: closestKey,
-    value: closestValue,
-  };
+  return { key: closestKey, value: closestValue };
 };
 
 const compareAndAlert = async (
@@ -66,7 +62,6 @@ const compareAndAlert = async (
   const coinSums = new Map<string, bigint>();
   const currentTime = Date.now();
 
-  // sum up the amounts of each coin across all vaults
   vaults.forEach((vault) => {
     vault.coins.forEach((coin) => {
       const currentSum = coinSums.get(coin.asset) || BigInt(0);
@@ -84,33 +79,39 @@ const compareAndAlert = async (
         currentTime - time * 60000,
       );
 
-      if (closestHistoricalData) {
-        const { value: sum } = closestHistoricalData;
-        if (sum > 0) {
+      if (closestHistoricalData.key) {
+        const { value: historicalSum } = closestHistoricalData;
+        if (historicalSum > 0) {
           const diff =
-            totalSum > sum ? totalSum - BigInt(sum) : BigInt(sum) - totalSum;
-          const diffPercentage = Number((diff * BigInt(100)) / BigInt(sum);
-          const percentageRequired = 1;
+            totalSum > historicalSum
+              ? totalSum - historicalSum
+              : historicalSum - totalSum;
+          const diffPercentage = Number((diff * 100n) / historicalSum);
+          const percentageRequired = 10;
 
-          const formattedSum = formatNumber(Number(sum) / 1e8);
+          const formattedSum = formatNumber(Number(historicalSum) / 1e8);
           const formattedTotalSum = formatNumber(Number(totalSum) / 1e8);
 
-          if (diffPercentage > percentageRequired && BigInt(sum) !== totalSum) {
+          if (diffPercentage > percentageRequired) {
             notifyAlert(
               `Total amount of ${asset} changed by more than ${percentageRequired}% (${diffPercentage}%, ${formattedSum} -> ${formattedTotalSum}) over the last ${time} minute(s).`,
             );
 
-            notifyPoolChange(asset, sum, Number(totalSum), diffPercentage, time);
+            notifyPoolChange(
+              asset,
+              BigInt(historicalSum),
+              BigInt(totalSum),
+              diffPercentage,
+              time,
+            );
 
-            // wait 1 second to avoid Discord rate limiting
             await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         }
       }
     }
 
-    // store current sum with timestamp and set TTL
-    const ttl = 60 * 60 + 5; // 1 hour and 5 minutes in seconds, to ensure we don't miss the next comparison
+    const ttl = 60 * 60 + 5;
     const timeKey = `${redisKey}:time:${currentTime}`;
     await redis.set(timeKey, totalSum.toString(), "EX", ttl);
   }

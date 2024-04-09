@@ -15,8 +15,8 @@ export const getWebhook = (): Webhook => {
 
 export const notifyPoolChange = (
   pool: string,
-  amountBefore: number,
-  amountAfter: number,
+  amountBefore: bigint,
+  amountAfter: bigint,
   percentageChange: number,
   minutesAgo: number,
 ) => {
@@ -24,9 +24,6 @@ export const notifyPoolChange = (
 
   const image = `https://static.thorswap.net/token-list/images/${pool.toLowerCase()}.png`;
   const poolUrl = `https://viewblock.io/thorchain/pool/${pool}`;
-
-  const formattedAmountBefore = formatNumber(amountBefore / 1e8);
-  const formattedAmountAfter = formatNumber(amountAfter / 1e8);
 
   const embed = new MessageBuilder()
     .setTitle(
@@ -38,18 +35,17 @@ export const notifyPoolChange = (
       poolUrl,
     )
     .setURL(poolUrl)
-    .addField("Before", formattedAmountBefore, true)
-    .addField("Now", formattedAmountAfter, true)
+    .addField("Before", formatNumber(Number(amountBefore) / 1e8), true)
+    .addField("Now", formatNumber(Number(amountAfter) / 1e8), true)
     .addField(
       "Change",
-      formatNumber((Number(amountAfter) - Number(amountBefore)) / 1e8),
+      formatNumber(Number(amountAfter - amountBefore) / 1e8),
       true,
     )
-    // .addField("Transaction Hash", transactionHash)
     .setColor("#FF0000")
     .setThumbnail(image)
     .setDescription(
-      `${pool} pool has changed by ${percentageChange.toFixed(2)}% compared to ${minutesAgo === 1 ? "minute" : `${minutesAgo} minutes`} ago.`,
+      `**${pool}** pool has changed by **${percentageChange.toFixed(2)}%** compared to** ${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**`,
     )
     .setTimestamp();
 
