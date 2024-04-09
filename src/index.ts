@@ -111,7 +111,7 @@ const compareAndAlert = async (
       }
     }
 
-    const ttl = 60 * 60 + 5;
+    const ttl = 120 * 60; // 2 hours
     const timeKey = `${redisKey}:time:${currentTime}`;
     await redis.set(timeKey, totalSum.toString(), "EX", ttl);
   }
