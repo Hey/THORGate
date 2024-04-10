@@ -94,3 +94,44 @@ export const notifyPriceChange = (
 
   return hook.send(embed);
 };
+
+export const notifyBalanceChange = (
+  denom: string,
+  address: string,
+  nickname: string,
+  amountBefore: bigint,
+  amountAfter: bigint,
+  percentageChange: number,
+  minutesAgo: number,
+) => {
+  const hook = getWebhook();
+
+  const identifier = denom.toLowerCase().replace("/", ".");
+  const image = `https://static.thorswap.net/token-list/images/${identifier}.png`;
+  const url = `https://viewblock.io/thorchain/address/${address}`;
+
+  const embed = new MessageBuilder()
+    .setTitle(`${nickname}: ${denom} ${percentageChange.toFixed(0)}% Change`)
+    .setAuthor(
+      "THORGate",
+      "https://blog.mexc.com/wp-content/uploads/2022/09/1_KkoJRE6ICrE70mNegVeY_Q.png",
+      url,
+    )
+    .setURL(url)
+    .addField("Before", formatNumber(Number(amountBefore) / 1e8), true)
+    .addField("Now", formatNumber(Number(amountAfter) / 1e8), true)
+    .addField(
+      "Change",
+      `${amountAfter - amountBefore < 0 ? "" : "+"}${formatNumber(Number(amountAfter - amountBefore) / 1e8)}`,
+      true,
+    )
+    .setColor("#FF0000")
+    .setThumbnail(image)
+    .setDescription(
+      `The balance of **${denom}** in wallet **${nickname}** has changed by **${percentageChange.toFixed(2)}%** compared to **${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**.`,
+    )
+    .setTimestamp()
+    .setText("@everyone");
+
+  return hook.send(embed);
+};

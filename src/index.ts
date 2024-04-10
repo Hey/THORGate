@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { redis } from "./redis";
 import { runAsgardVaultBalance } from "./jobs/vaultBalance";
 import { runNetworkPrice } from "./jobs/networkPrice";
+import { runThorchainBalanceJob } from "./jobs/thorchainBalance";
 
 const schedule = () => {
   console.log("Scheduling jobs...");
@@ -15,6 +16,8 @@ const schedule = () => {
   console.log(
     "Network price check (rune_price_in_tor & tor_price_in_rune) scheduled to run every minute.",
   );
+
+  runThorchainBalanceJob();
 };
 
 schedule();
