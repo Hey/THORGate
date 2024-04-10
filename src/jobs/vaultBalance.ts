@@ -1,4 +1,4 @@
-import { notifyAlert, notifyPoolChange } from "../notifications";
+import { notifyPoolChange } from "../notifications";
 import { findClosestTimeKey, redis } from "../redis";
 import { Vault, fetchVaults } from "../thorchain";
 import { formatNumber } from "../utils";
@@ -39,12 +39,12 @@ const compareAndAlert = async (
           const formattedSum = formatNumber(Number(historicalSum) / 1e8);
           const formattedTotalSum = formatNumber(Number(totalSum) / 1e8);
 
-          if (diffPercentage > percentageRequired) {
-            notifyAlert(
+          if (diffPercentage >= percentageRequired) {
+            console.log(
               `Total amount of ${asset} changed by more than ${percentageRequired}% (${diffPercentage}%, ${formattedSum} -> ${formattedTotalSum}) over the last ${time} minute(s).`,
             );
 
-            notifyPoolChange(
+            await notifyPoolChange(
               asset,
               BigInt(historicalSum),
               BigInt(totalSum),
@@ -64,13 +64,13 @@ const compareAndAlert = async (
   }
 };
 
-export const runVaultComparison = async () => {
-  console.log("Running vault comparison...");
+export const runAsgardVaultBalance = async () => {
+  console.log("Running Asgard vault check...");
   try {
     const currentVaults = await fetchVaults();
     await compareAndAlert(currentVaults);
-    console.log("Vault check completed.");
+    console.log("Asgard vault check complete.");
   } catch (error) {
-    console.error("Error in scheduled vault comparison:", error);
+    console.error("Error in Asgard vault check:", error);
   }
 };

@@ -24,6 +24,8 @@ export interface Balance {
 export interface Network {
   bond_reward_rune: string;
   total_reserve: string;
+  rune_price_in_tor: string;
+  tor_price_in_rune: string;
 }
 
 export interface POL {
@@ -46,7 +48,7 @@ async function fetchFromAPI<T>(
 
   const response = await fetch(url, {
     method: "GET",
-    headers: { accept: "application/json", "x-client-id": "thorswap-be" },
+    headers: { accept: "application/json" },
   });
 
   if (!response.ok) {
