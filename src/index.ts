@@ -18,6 +18,10 @@ const schedule = () => {
   );
 
   runThorchainBalanceJob();
+  cron.schedule("* * * * *", async () => runThorchainBalanceJob);
+  console.log(
+    "Thorchain various wallet balance check scheduled to run every minute.",
+  );
 };
 
 schedule();
