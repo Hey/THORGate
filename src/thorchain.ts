@@ -48,7 +48,7 @@ async function fetchFromAPI<T>(
 
   const response = await fetch(url, {
     method: "GET",
-    headers: { accept: "application/json" },
+    headers: { accept: "application/json", "x-client-id": "thorgate" },
   });
 
   if (!response.ok) {
