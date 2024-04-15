@@ -13,7 +13,7 @@ const propertyThresholds: Thresholds = {
   balance_rune: 5,
   pool_units: 3,
   LP_units: 2,
-  synth_units: 5,
+  synth_units: 10,
   loan_collateral: 2,
   loan_collateral_remaining: 2,
   savers_depth: 2,
