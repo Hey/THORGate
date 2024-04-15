@@ -9,7 +9,7 @@ export const getWebhook = (): Webhook => {
   return hook;
 };
 
-export const notifyPoolChange = (
+export const notifyVaultBalanceChange = (
   pool: string,
   amountBefore: bigint,
   amountAfter: bigint,
@@ -23,7 +23,7 @@ export const notifyPoolChange = (
 
   const embed = new MessageBuilder()
     .setTitle(
-      `${pool.split("-")[0]} ${percentageChange.toFixed(0)}% Pool Change`,
+      `${pool.split("-")[0]} ${percentageChange.toFixed(0)}% Asgard Vault Change`,
     )
     .setAuthor(
       "THORGate",
@@ -43,8 +43,8 @@ export const notifyPoolChange = (
     .setDescription(
       `**${pool}** pool has changed by **${percentageChange.toFixed(2)}%** compared to** ${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**`,
     )
-    .setTimestamp()
-    .setText("@everyone");
+    .setTimestamp();
+  // .setText("@everyone");
 
   return hook.send(embed);
 };
@@ -89,8 +89,8 @@ export const notifyPriceChange = (
     .setDescription(
       `The ${title} has changed by **${percentageChange.toFixed(2)}%** compared to **${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**.`,
     )
-    .setTimestamp()
-    .setText("@everyone");
+    .setTimestamp();
+  // .setText("@everyone");
 
   return hook.send(embed);
 };
@@ -130,8 +130,52 @@ export const notifyBalanceChange = (
     .setDescription(
       `The balance of **${denom}** in wallet **${nickname}** has changed by **${percentageChange.toFixed(2)}%** compared to **${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**.`,
     )
-    .setTimestamp()
-    .setText("@everyone");
+    .setTimestamp();
+  // .setText("@everyone");
+
+  return hook.send(embed);
+};
+
+export const notifyPoolChange = (
+  pool: string,
+  property: string,
+  valueBefore: bigint,
+  valueAfter: bigint,
+  percentageChange: number,
+  minutesAgo: number,
+) => {
+  const hook = getWebhook();
+  const formattedValueBefore = formatNumber(Number(valueBefore) / 1e8);
+  const formattedValueAfter = formatNumber(Number(valueAfter) / 1e8);
+  const formattedChange = formatNumber(Number(valueAfter - valueBefore) / 1e8);
+
+  const image = `https://static.thorswap.net/token-list/images/${pool.toLowerCase()}.png`;
+  const poolUrl = `https://viewblock.io/thorchain/pool/${pool}`;
+
+  const embed = new MessageBuilder()
+    .setTitle(
+      `${pool.split("-")[0]} ${percentageChange.toFixed(0)}% Pool Change in ${property}`,
+    )
+    .setAuthor(
+      "THORGate",
+      "https://blog.mexc.com/wp-content/uploads/2022/09/1_KkoJRE6ICrE70mNegVeY_Q.png",
+      poolUrl,
+    )
+    .setURL(poolUrl)
+    .addField("Before", formattedValueBefore, true)
+    .addField("Now", formattedValueAfter, true)
+    .addField(
+      "Change",
+      `${valueAfter - valueBefore < 0 ? "" : "+"}${formattedChange}`,
+      true,
+    )
+    .setColor("#FF0000")
+    .setThumbnail(image)
+    .setDescription(
+      `The **${property}** of **${pool}** pool has changed by **${percentageChange.toFixed(2)}%** compared to **${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**.`,
+    )
+    .setTimestamp();
+  // .setText("@everyone");
 
   return hook.send(embed);
 };

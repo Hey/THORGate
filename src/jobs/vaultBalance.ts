@@ -1,4 +1,4 @@
-import { notifyPoolChange } from "../notifications";
+import { notifyVaultBalanceChange } from "../notifications";
 import { findClosestTimeKey, redis } from "../redis";
 import { Vault, fetchVaults } from "../thorchain";
 import { formatNumber } from "../utils";
@@ -44,7 +44,7 @@ const compareAndAlert = async (
               `Total amount of ${asset} changed by more than ${percentageRequired}% (${diffPercentage}%, ${formattedSum} -> ${formattedTotalSum}) over the last ${time} minute(s).`,
             );
 
-            await notifyPoolChange(
+            await notifyVaultBalanceChange(
               asset,
               BigInt(historicalSum),
               BigInt(totalSum),

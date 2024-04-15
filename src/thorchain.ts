@@ -9,11 +9,14 @@ export interface Vault {
   coins: Coin[];
 }
 
-export interface Pool {
+interface Pool {
   asset: string;
-  status: string;
   balance_asset: string;
   balance_rune: string;
+  pool_units: string;
+  LP_units: string;
+  synth_units: string;
+  [key: string]: string;
 }
 
 export interface Balance {

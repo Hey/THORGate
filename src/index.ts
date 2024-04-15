@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { runAsgardVaultBalance } from "./jobs/vaultBalance";
 import { runNetworkPrice } from "./jobs/networkPrice";
 import { runThorchainBalanceJob } from "./jobs/thorchainBalance";
+import { runPoolMonitoring } from "./jobs/pool";
 
 const schedule = () => {
   console.log("Scheduling jobs...");
@@ -28,6 +29,11 @@ const schedule = () => {
   console.log(
     "Thorchain various wallet balance check scheduled to run every minute.",
   );
+
+  cron.schedule("* * * * *", async () => {
+    await runPoolMonitoring();
+  });
+  console.log("Pool balance check scheduled to run every minute.");
 };
 
 schedule();

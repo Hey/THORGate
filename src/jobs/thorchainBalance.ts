@@ -7,7 +7,7 @@ const wallets = new Map([
     "thor1g98cy3n9mmjrpn0sxmn63lztelera37n8n67c0",
     {
       name: "Pool Module",
-      percentage: 1,
+      percentage: 3,
     },
   ],
   [
