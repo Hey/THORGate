@@ -57,6 +57,7 @@ const wallets = new Map([
 const compareAndAlert = async (
   address: string,
   balances: Balance[],
+  minimumPercentage: number,
   compareTimes = [1, 10, 30, 60],
 ) => {
   const currentTime = Date.now();
@@ -79,7 +80,7 @@ const compareAndAlert = async (
           const diffPercentage = Number(
             (diff * 100n) / BigInt(historicalAmount),
           );
-          if (diffPercentage >= 1) {
+          if (diffPercentage >= minimumPercentage) {
             await notifyBalanceChange(
               balance.denom,
               address,
@@ -104,10 +105,11 @@ const compareAndAlert = async (
 export const runThorchainBalanceJob = async () => {
   for (const address of wallets.keys()) {
     const name = wallets.get(address)?.name ?? address;
+    const minimumPercentage = wallets.get(address)?.percentage ?? 1;
     console.log(`Running balance check for ${name}...`);
     try {
       const currentBalances = await fetchBalances(address);
-      await compareAndAlert(address, currentBalances);
+      await compareAndAlert(address, currentBalances, minimumPercentage);
       console.log(`Balance check complete for ${name}.`);
     } catch (error) {
       console.error(`Error in balance check for ${name}:`, error);
