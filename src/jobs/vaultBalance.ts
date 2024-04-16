@@ -87,12 +87,12 @@ const notify = async (
     .setURL(poolUrl)
     .addField(
       "Before",
-      `${formatNumber(Number(amountBefore) / 1e8)} ${asset.split("-")[0].split("-")[1]}`,
+      `${formatNumber(Number(amountBefore) / 1e8)} ${asset.split("-")[0].split(".")[1]}`,
       true,
     )
     .addField(
       "Now",
-      `${formatNumber(Number(amountAfter) / 1e8)} ${asset.split("-")[0].split("-")[1]}`,
+      `${formatNumber(Number(amountAfter) / 1e8)} ${asset.split("-")[0].split(".")[1]}`,
       true,
     )
     .addField(
