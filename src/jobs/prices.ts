@@ -20,6 +20,8 @@ const monitorPrices = async () => {
   const currentTime = Date.now();
 
   for (const pool of allPools) {
+    if (pool.status !== "Available") continue;
+
     const priceInUSD = calculatePriceInUSD(pool, runePriceInUsd);
     if (priceInUSD === null) continue;
 

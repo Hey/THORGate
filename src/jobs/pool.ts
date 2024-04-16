@@ -29,6 +29,8 @@ const compareAndAlertPools = async (compareTimes = [1, 10, 30, 60]) => {
     for (const property in propertyThresholds) {
       if (!pool.hasOwnProperty(property)) continue; // Skip if the pool does not have the property
 
+      if (pool.status !== "Available") continue;
+
       const currentValue = BigInt(pool[property]);
       const redisKey = `pool:${pool.asset}:${property}`;
 
