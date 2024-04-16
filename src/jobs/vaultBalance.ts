@@ -26,6 +26,7 @@ const compareAndAlert = async (
       const { key, value: historicalSum } = await findClosestTimeKey(
         redisKey,
         currentTime - time * 60000,
+        2,
       );
 
       if (key && historicalSum > 0) {
@@ -41,7 +42,6 @@ const compareAndAlert = async (
             ? `${asset}: ${diffPercentage.toFixed(2)}% change; USD Change: ${usdChange.toFixed(2)}`
             : `${asset}: ${diffPercentage.toFixed(2)}% change`;
 
-          console.log(logMessage);
           await notify(
             asset,
             historicalSum,
@@ -78,16 +78,18 @@ const notify = async (
   const poolUrl = `https://viewblock.io/thorchain/pool/${asset}`;
 
   const embed = embedBuilder
-    .setTitle(`${asset.split("-")[0]} ${percentageChange.toFixed(0)}% Change`)
+    .setTitle(
+      `${asset.split("-")[0]} Pool ${percentageChange.toFixed(0)}% Change`,
+    )
     .setURL(poolUrl)
     .addField(
       "Before",
-      `${formatNumber(Number(amountBefore) / 1e8)} ${asset.split("-")[0]}`,
+      `${formatNumber(Number(amountBefore) / 1e8)} ${asset.split("-")[0].split("-")[1]}`,
       true,
     )
     .addField(
       "Now",
-      `${formatNumber(Number(amountAfter) / 1e8)} ${asset.split("-")[0]}`,
+      `${formatNumber(Number(amountAfter) / 1e8)} ${asset.split("-")[0].split("-")[1]}`,
       true,
     )
     .addField(
@@ -98,7 +100,7 @@ const notify = async (
     .setColor("#FF0000")
     .setThumbnail(image)
     .setDescription(
-      `The ${asset} pool has changed by ${percentageChange.toFixed(2)}% over the past ${minutesAgo} minutes.`,
+      `The **${asset}** pool has changed by **${percentageChange.toFixed(2)}%** over the past **${minutesAgo}** minutes.`,
     )
     .setTimestamp();
 

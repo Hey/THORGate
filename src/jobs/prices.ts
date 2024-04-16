@@ -20,13 +20,24 @@ const monitorPrices = async () => {
   const currentTime = Date.now();
 
   for (const pool of allPools) {
-    if (pool.status !== "Available") continue;
+    if (pool.status !== "Available") {
+      console.log(`Pool ${pool.asset} is not available`);
+      continue;
+    }
 
     const priceInUSD = calculatePriceInUSD(pool, runePriceInUsd);
-    if (priceInUSD === null) continue;
+    if (priceInUSD === null) {
+      console.log(`Failed to calculate price for ${pool.asset}`);
+      continue;
+    }
+
+    // console.log(`Price of ${pool.asset}: $${priceInUSD}`);
 
     const redisKey = `price:${pool.asset}`;
     await redis.set(redisKey, priceInUSD.toString(), "EX", 86400); // 24 hours TTL
+
+    const timeKey = `${redisKey}:time:${currentTime}`;
+    await redis.set(timeKey, priceInUSD.toString(), "EX", 7200); // 2 hours TTL
 
     for (const time of compareTimes) {
       const { key, value } = await findClosestTimeKey(
@@ -34,7 +45,7 @@ const monitorPrices = async () => {
         currentTime - time * 60000,
       );
       if (key && value) {
-        const historicalPrice = parseFloat(value);
+        const historicalPrice = Number(value);
         if (!isNaN(historicalPrice)) {
           const percentageChange =
             Math.abs((priceInUSD - historicalPrice) / historicalPrice) * 100;
@@ -53,9 +64,6 @@ const monitorPrices = async () => {
         }
       }
     }
-
-    const timeKey = `${redisKey}:time:${currentTime}`;
-    await redis.set(timeKey, priceInUSD.toString(), "EX", 7200); // 2 hours TTL
   }
 
   console.log("Price monitoring completed.");
@@ -76,7 +84,7 @@ const notify = async (
 
   const embed = embedBuilder
     .setTitle(
-      `${identifier.split("-")[0]}: ${percentageChange.toFixed(0)}% Change`,
+      `${identifier.split("-")[0]}: ${percentageChange.toFixed(0)}% Price Change`,
     )
     .setURL(url)
     .addField("Before", `$${formatNumber(priceBefore)}`, true)

@@ -131,7 +131,9 @@ async function notify(
   const url = `https://viewblock.io/thorchain/address/${address}`;
 
   const embed = embedBuilder
-    .setTitle(`${nickname}: ${denom} ${percentageChange.toFixed(0)}% Change`)
+    .setTitle(
+      `${nickname}: ${denom} ${percentageChange.toFixed(0)}% Balance Change`,
+    )
     .setURL(url)
     .addField("Before", formatNumber(Number(amountBefore) / 1e8), true)
     .addField("Now", formatNumber(Number(amountAfter) / 1e8), true)
