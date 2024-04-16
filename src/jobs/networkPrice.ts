@@ -1,21 +1,26 @@
 import { getWebhook } from "../notifications";
 import { findClosestTimeKey, redis } from "../redis";
-import { fetchNetwork } from "../thorchain";
+import { Network, fetchNetwork } from "../thorchain";
 import { formatNumberPrice } from "../utils";
+
+interface Asset {
+  key: keyof Network;
+  scale: number;
+}
 
 const compareAndAlert = async (compareTimes = [1, 10, 30, 60]) => {
   const currentTime = Date.now();
-  const currentNetworkData = await fetchNetwork();
-  const assets = ["rune_price_in_tor", "tor_price_in_rune"];
+  const currentNetworkData: Network = await fetchNetwork();
+  const assets: Asset[] = [
+    { key: "rune_price_in_tor", scale: 1e8 },
+    { key: "tor_price_in_rune", scale: 1e6 },
+  ];
 
-  for (const asset of assets) {
-    const currentPrice =
-      asset === "rune_price_in_tor"
-        ? Number(currentNetworkData.rune_price_in_tor) / 1e8
-        : Number(currentNetworkData.tor_price_in_rune) / 1e6;
-    console.log("currentPrice", currentPrice);
+  for (const { key, scale } of assets) {
+    const currentPrice = Number(currentNetworkData[key]) / scale;
+    console.log(`${key}: Current Price - ${currentPrice}`);
 
-    const redisKey = `price:${asset}`;
+    const redisKey = `price:${key}`;
 
     for (const time of compareTimes) {
       const closestHistoricalData = await findClosestTimeKey(
@@ -23,44 +28,63 @@ const compareAndAlert = async (compareTimes = [1, 10, 30, 60]) => {
         currentTime - time * 60000,
       );
 
-      if (closestHistoricalData.key) {
-        const historicalPrice =
-          asset === "rune_price_in_tor"
-            ? Number(closestHistoricalData.value) / 1e8
-            : Number(closestHistoricalData.value) / 1e6;
+      if (closestHistoricalData.key && closestHistoricalData.value > 0) {
+        const historicalPrice = Number(closestHistoricalData.value) / scale;
+        const diff = Math.abs(currentPrice - historicalPrice);
+        const diffPercentage = (diff * 100) / historicalPrice;
 
-        if (historicalPrice > 0) {
-          const diff =
-            currentPrice > historicalPrice
-              ? currentPrice - Number(historicalPrice)
-              : historicalPrice - currentPrice;
-          const diffPercentage = Number((diff * 100) / historicalPrice);
-
-          const percentageRequired = 0; // 1% notified too much
-
-          if (diffPercentage >= percentageRequired) {
-            console.log(
-              `Price of ${asset} changed by more than ${percentageRequired}% (${diffPercentage}%, ${historicalPrice} -> ${currentPrice}) over the last ${time} minute(s).`,
-            );
-
-            await notify(
-              asset,
-              historicalPrice,
-              currentPrice,
-              diffPercentage,
-              time,
-            );
-
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
+        if (diffPercentage >= 1) {
+          console.log(
+            `${key}: Price changed by ${diffPercentage.toFixed(2)}% (${historicalPrice} -> ${currentPrice}) over the last ${time} minutes.`,
+          );
+          await notify(
+            key,
+            historicalPrice,
+            currentPrice,
+            diffPercentage,
+            time,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
     }
 
-    const ttl = 120 * 60; // 2 hours
+    const ttl = 7200; // 2 hours in seconds
     const timeKey = `${redisKey}:time:${currentTime}`;
     await redis.set(timeKey, currentPrice.toString(), "EX", ttl);
   }
+};
+
+const notify = async (
+  asset: string,
+  priceBefore: number,
+  priceAfter: number,
+  percentageChange: number,
+  minutesAgo: number,
+) => {
+  const hook = getWebhook();
+  const formattedAsset = asset.split("_").join(" ").toUpperCase();
+  const image = `https://static.thorswap.net/token-list/images/${formattedAsset.toLowerCase().includes("tor") ? "eth.vthor-0x815c23eca83261b6ec689b60cc4a58b54bc24d8d" : "thor.rune"}.png`;
+  const assetUrl = `https://viewblock.io/thorchain/${asset}`;
+
+  const embed = hook
+    .setTitle(`${formattedAsset} ${percentageChange.toFixed(2)}% Change`)
+    .setURL(assetUrl)
+    .addField("Before", formatNumberPrice(priceBefore), true)
+    .addField("Now", formatNumberPrice(priceAfter), true)
+    .addField(
+      "Change",
+      `${priceAfter >= priceBefore ? "+" : ""}${formatNumberPrice(priceAfter - priceBefore)}`,
+      true,
+    )
+    .setColor("#FF0000")
+    .setThumbnail(image)
+    .setDescription(
+      `The price of ${formattedAsset} has changed by ${percentageChange.toFixed(2)}% in the last ${minutesAgo} minutes.`,
+    )
+    .setTimestamp();
+
+  return hook.send(embed);
 };
 
 export const runNetworkPrice = async () => {
@@ -71,44 +95,4 @@ export const runNetworkPrice = async () => {
   } catch (error) {
     console.error("Error in scheduled network price check:", error);
   }
-};
-
-export const notify = async (
-  asset: string,
-  priceBefore: number,
-  priceAfter: number,
-  percentageChange: number,
-  minutesAgo: number,
-) => {
-  const hook = getWebhook();
-
-  const assetLower = asset.toLowerCase();
-  const image = `https://static.thorswap.net/token-list/images/${assetLower.includes("tor") ? "eth.vthor-0x815c23eca83261b6ec689b60cc4a58b54bc24d8d" : "thor.rune"}.png`; // I know tor != thor, but needed a logo;
-  const assetUrl = `https://viewblock.io/thorchain/${assetLower}`;
-
-  let title = "";
-  if (asset === "tor_price_in_rune") {
-    title = "Network TOR Price in RUNE";
-  } else if (asset === "rune_price_in_tor") {
-    title = "Network RUNE Price in TOR";
-  }
-
-  const embed = hook
-    .setTitle(`${title} ${percentageChange.toFixed(2)}% Change`)
-    .addField("Before", formatNumberPrice(priceBefore), true)
-    .addField("Now", formatNumberPrice(priceAfter), true)
-    .addField(
-      "Change",
-      `${priceAfter - priceBefore < 0 ? "" : "+"}${formatNumberPrice(Number(priceAfter - priceBefore))}`,
-      true,
-    )
-    .setColor("#FF0000")
-    .setThumbnail(image)
-    .setDescription(
-      `The ${title} has changed by **${percentageChange.toFixed(2)}%** compared to **${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**.`,
-    )
-    .setTimestamp();
-  // .setText("@everyone");
-
-  return hook.send(embed);
 };

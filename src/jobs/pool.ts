@@ -10,18 +10,15 @@ interface Thresholds {
 }
 
 const propertyThresholds: Thresholds = {
-  balance_asset: {
-    percentage: 5,
-  },
-  balance_rune: {
-    percentage: 5,
-  },
-  // pool_units: 3,
-  // LP_units: 2,
-  // synth_units: 10,
-  // loan_collateral: 2,
-  // loan_collateral_remaining: 2,
-  // savers_depth: 2,
+  balance_asset: { percentage: 5 },
+  balance_rune: { percentage: 5 },
+  // Additional properties can be uncommented or added as needed
+  // pool_units: { percentage: 3 },
+  // LP_units: { percentage: 2 },
+  // synth_units: { percentage: 10 },
+  // loan_collateral: { percentage: 2 },
+  // loan_collateral_remaining: { percentage: 2 },
+  // savers_depth: { percentage: 2 },
 };
 
 const compareAndAlertPools = async (compareTimes = [1, 10, 30, 60]) => {
@@ -30,57 +27,81 @@ const compareAndAlertPools = async (compareTimes = [1, 10, 30, 60]) => {
 
   for (const pool of pools) {
     for (const property in propertyThresholds) {
+      if (!pool.hasOwnProperty(property)) continue; // Skip if the pool does not have the property
+
       const currentValue = BigInt(pool[property]);
       const redisKey = `pool:${pool.asset}:${property}`;
 
       for (const time of compareTimes) {
-        const closestHistoricalData = await findClosestTimeKey(
+        const { key, value } = await findClosestTimeKey(
           redisKey,
           currentTime - time * 60000,
         );
+        if (key && value && BigInt(value) > 0) {
+          const historicalValue = BigInt(value);
+          const diff =
+            currentValue > historicalValue
+              ? currentValue - historicalValue
+              : historicalValue - currentValue;
+          const diffPercentage = Number((diff * 100n) / historicalValue);
 
-        if (closestHistoricalData.key) {
-          const historicalValue = BigInt(closestHistoricalData.value);
-          if (historicalValue > 0) {
-            const diff =
-              currentValue > historicalValue
-                ? currentValue - historicalValue
-                : historicalValue - currentValue;
-            const diffPercentage = Number((diff * 100n) / historicalValue);
-            const propertyConfig = propertyThresholds[property];
-
-            if (diffPercentage >= propertyConfig.percentage) {
-              const formattedHistoricalValue = formatNumber(
-                Number(historicalValue) / 1e8,
-              );
-              const formattedCurrentValue = formatNumber(
-                Number(currentValue) / 1e8,
-              );
-
-              console.log(
-                `Significant pool property change detected in ${property} of ${pool.asset}: ${diffPercentage}% change (${formattedHistoricalValue} -> ${formattedCurrentValue}) over the last ${time} minutes.`,
-              );
-
-              await notify(
-                pool.asset,
-                property,
-                historicalValue,
-                currentValue,
-                diffPercentage,
-                time,
-              );
-
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-            }
+          if (diffPercentage >= propertyThresholds[property].percentage) {
+            console.log(
+              `Significant change in ${property} of ${pool.asset}: ${diffPercentage}% (${formatNumber(Number(historicalValue))} -> ${formatNumber(Number(currentValue))}) over the last ${time} minutes.`,
+            );
+            await notify(
+              pool.asset,
+              property,
+              historicalValue,
+              currentValue,
+              diffPercentage,
+              time,
+            );
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // Delay to throttle notifications
           }
         }
       }
-
-      const ttl = 120 * 60; // 2 hours
-      const timeKey = `${redisKey}:time:${currentTime}`;
-      await redis.set(timeKey, currentValue.toString(), "EX", ttl);
+      await redis.set(
+        `${redisKey}:time:${currentTime}`,
+        currentValue.toString(),
+        "EX",
+        7200,
+      ); // 2 hours TTL
     }
   }
+};
+
+const notify = async (
+  pool: string,
+  property: string,
+  valueBefore: bigint,
+  valueAfter: bigint,
+  percentageChange: number,
+  minutesAgo: number,
+) => {
+  const hook = getWebhook();
+  const embed = hook
+    .setTitle(
+      `${pool.split("-")[0]} ${percentageChange.toFixed(0)}% Change in ${property}`,
+    )
+    .setURL(`https://viewblock.io/thorchain/pool/${pool}`)
+    .addField("Before", `$${formatNumber(Number(valueBefore) / 1e8)}`, true)
+    .addField("Now", `$${formatNumber(Number(valueAfter) / 1e8)}`, true)
+    .addField(
+      "Change",
+      `${valueAfter > valueBefore ? "+" : ""}${formatNumber(Number(valueAfter - valueBefore) / 1e8)}`,
+      true,
+    )
+    .setColor("#FF0000")
+    .setThumbnail(
+      `https://static.thorswap.net/token-list/images/${pool.toLowerCase()}.png`,
+    )
+    .setDescription(
+      `The **${property}** of **${pool}** has changed by **${percentageChange.toFixed(2)}%** compared to ${minutesAgo === 1 ? "a minute ago" : `${minutesAgo} minutes ago`}.`,
+    )
+    .setTimestamp();
+
+  return hook.send(embed);
 };
 
 export const runPoolMonitoring = async () => {
@@ -91,43 +112,4 @@ export const runPoolMonitoring = async () => {
   } catch (error) {
     console.error("Error in pool monitoring:", error);
   }
-};
-
-export const notify = async (
-  pool: string,
-  property: string,
-  valueBefore: bigint,
-  valueAfter: bigint,
-  percentageChange: number,
-  minutesAgo: number,
-) => {
-  const hook = getWebhook();
-  const formattedValueBefore = formatNumber(Number(valueBefore) / 1e8);
-  const formattedValueAfter = formatNumber(Number(valueAfter) / 1e8);
-  const formattedChange = formatNumber(Number(valueAfter - valueBefore) / 1e8);
-
-  const image = `https://static.thorswap.net/token-list/images/${pool.toLowerCase()}.png`;
-  const poolUrl = `https://viewblock.io/thorchain/pool/${pool}`;
-
-  const embed = hook
-    .setTitle(
-      `${pool.split("-")[0]} ${percentageChange.toFixed(0)}% Pool Change in ${property}`,
-    )
-    .setURL(poolUrl)
-    .addField("Before", formattedValueBefore, true)
-    .addField("Now", formattedValueAfter, true)
-    .addField(
-      "Change",
-      `${valueAfter - valueBefore < 0 ? "" : "+"}${formattedChange}`,
-      true,
-    )
-    .setColor("#FF0000")
-    .setThumbnail(image)
-    .setDescription(
-      `The **${property}** of **${pool}** pool has changed by **${percentageChange.toFixed(2)}%** compared to **${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**.`,
-    )
-    .setTimestamp();
-  // .setText("@everyone");
-
-  return hook.send(embed);
 };
