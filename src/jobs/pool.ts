@@ -1,22 +1,27 @@
-import { notifyPoolChange } from "../notifications";
+import { getWebhook } from "../notifications";
 import { findClosestTimeKey, redis } from "../redis";
 import { fetchPools } from "../thorchain";
 import { formatNumber } from "../utils";
 
 interface Thresholds {
-  [key: string]: number;
+  [key: string]: {
+    percentage: number;
+  };
 }
 
-// Minimum percentage change required to trigger an alert
 const propertyThresholds: Thresholds = {
-  balance_asset: 5,
-  balance_rune: 5,
-  pool_units: 3,
-  LP_units: 2,
-  synth_units: 10,
-  loan_collateral: 2,
-  loan_collateral_remaining: 2,
-  savers_depth: 2,
+  balance_asset: {
+    percentage: 5,
+  },
+  balance_rune: {
+    percentage: 5,
+  },
+  // pool_units: 3,
+  // LP_units: 2,
+  // synth_units: 10,
+  // loan_collateral: 2,
+  // loan_collateral_remaining: 2,
+  // savers_depth: 2,
 };
 
 const compareAndAlertPools = async (compareTimes = [1, 10, 30, 60]) => {
@@ -42,9 +47,9 @@ const compareAndAlertPools = async (compareTimes = [1, 10, 30, 60]) => {
                 ? currentValue - historicalValue
                 : historicalValue - currentValue;
             const diffPercentage = Number((diff * 100n) / historicalValue);
-            const percentageRequired = propertyThresholds[property];
+            const propertyConfig = propertyThresholds[property];
 
-            if (diffPercentage >= percentageRequired) {
+            if (diffPercentage >= propertyConfig.percentage) {
               const formattedHistoricalValue = formatNumber(
                 Number(historicalValue) / 1e8,
               );
@@ -56,7 +61,7 @@ const compareAndAlertPools = async (compareTimes = [1, 10, 30, 60]) => {
                 `Significant pool property change detected in ${property} of ${pool.asset}: ${diffPercentage}% change (${formattedHistoricalValue} -> ${formattedCurrentValue}) over the last ${time} minutes.`,
               );
 
-              await notifyPoolChange(
+              await notify(
                 pool.asset,
                 property,
                 historicalValue,
@@ -86,4 +91,43 @@ export const runPoolMonitoring = async () => {
   } catch (error) {
     console.error("Error in pool monitoring:", error);
   }
+};
+
+export const notify = async (
+  pool: string,
+  property: string,
+  valueBefore: bigint,
+  valueAfter: bigint,
+  percentageChange: number,
+  minutesAgo: number,
+) => {
+  const hook = getWebhook();
+  const formattedValueBefore = formatNumber(Number(valueBefore) / 1e8);
+  const formattedValueAfter = formatNumber(Number(valueAfter) / 1e8);
+  const formattedChange = formatNumber(Number(valueAfter - valueBefore) / 1e8);
+
+  const image = `https://static.thorswap.net/token-list/images/${pool.toLowerCase()}.png`;
+  const poolUrl = `https://viewblock.io/thorchain/pool/${pool}`;
+
+  const embed = hook
+    .setTitle(
+      `${pool.split("-")[0]} ${percentageChange.toFixed(0)}% Pool Change in ${property}`,
+    )
+    .setURL(poolUrl)
+    .addField("Before", formattedValueBefore, true)
+    .addField("Now", formattedValueAfter, true)
+    .addField(
+      "Change",
+      `${valueAfter - valueBefore < 0 ? "" : "+"}${formattedChange}`,
+      true,
+    )
+    .setColor("#FF0000")
+    .setThumbnail(image)
+    .setDescription(
+      `The **${property}** of **${pool}** pool has changed by **${percentageChange.toFixed(2)}%** compared to **${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**.`,
+    )
+    .setTimestamp();
+  // .setText("@everyone");
+
+  return hook.send(embed);
 };

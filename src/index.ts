@@ -3,37 +3,28 @@ import { runAsgardVaultBalance } from "./jobs/vaultBalance";
 import { runNetworkPrice } from "./jobs/networkPrice";
 import { runThorchainBalanceJob } from "./jobs/thorchainBalance";
 import { runPoolMonitoring } from "./jobs/pool";
+import { runPriceMonitoring } from "./jobs/prices";
 
-const schedule = () => {
+const schedule = async () => {
   console.log("Scheduling jobs...");
 
-  runAsgardVaultBalance();
-  runNetworkPrice();
-  runThorchainBalanceJob();
+  await runPriceMonitoring();
 
-  cron.schedule("* * * * *", async () => {
+  if (process.env.NODE_ENV === "development") {
+    console.log("Running jobs instantly:");
     await runAsgardVaultBalance();
-  });
-  console.log("Asgard vault balance check scheduled to run every minute.");
-
-  cron.schedule("* * * * *", async () => {
     await runNetworkPrice();
-  });
-  console.log(
-    "Network price check (rune_price_in_tor & tor_price_in_rune) scheduled to run every minute.",
-  );
-
-  cron.schedule("* * * * *", async () => {
     await runThorchainBalanceJob();
-  });
-  console.log(
-    "Thorchain various wallet balance check scheduled to run every minute.",
-  );
+    await runPoolMonitoring();
+  }
 
   cron.schedule("* * * * *", async () => {
+    await runPriceMonitoring();
+    await runNetworkPrice();
+    await runAsgardVaultBalance();
+    await runThorchainBalanceJob();
     await runPoolMonitoring();
   });
-  console.log("Pool balance check scheduled to run every minute.");
 };
 
 schedule();

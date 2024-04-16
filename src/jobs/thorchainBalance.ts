@@ -1,6 +1,8 @@
 import { findClosestTimeKey, redis } from "../redis";
-import { notifyBalanceChange } from "../notifications";
+import { getWebhook } from "../notifications";
 import { Balance, fetchBalances } from "../thorchain";
+import getLatestPriceByAsset from "../prices";
+import { formatNumber } from "../utils";
 
 const wallets = new Map([
   [
@@ -80,8 +82,25 @@ const compareAndAlert = async (
           const diffPercentage = Number(
             (diff * 100n) / BigInt(historicalAmount),
           );
-          if (diffPercentage >= minimumPercentage) {
-            await notifyBalanceChange(
+          if (diffPercentage >= minimumPercentage && diff > 0) {
+            const price = await getLatestPriceByAsset(balance.denom);
+
+            if (!price) {
+              console.log(
+                `[BALANCE] Skipping ${balance.denom} due to missing price data`,
+              );
+              continue;
+            }
+
+            // Check if difference is $100k>
+            if (diff * price < 100_000 * 1e8) {
+              console.log(
+                `[BALANCE] Skipping ${balance.denom} due to low $ difference, only ${diff * BigInt(price)} USD (${diffPercentage}%)`,
+              );
+              continue;
+            }
+
+            await notify(
               balance.denom,
               address,
               wallets.get(address)?.name ?? address,
@@ -115,4 +134,40 @@ export const runThorchainBalanceJob = async () => {
       console.error(`Error in balance check for ${name}:`, error);
     }
   }
+};
+
+export const notify = async (
+  denom: string,
+  address: string,
+  nickname: string,
+  amountBefore: bigint,
+  amountAfter: bigint,
+  percentageChange: number,
+  minutesAgo: number,
+) => {
+  const hook = getWebhook();
+
+  const identifier = denom.toLowerCase().replace("/", ".");
+  const image = `https://static.thorswap.net/token-list/images/${identifier}.png`;
+  const url = `https://viewblock.io/thorchain/address/${address}`;
+
+  const embed = hook
+    .setTitle(`${nickname}: ${denom} ${percentageChange.toFixed(0)}% Change`)
+    .setURL(url)
+    .addField("Before", formatNumber(Number(amountBefore) / 1e8), true)
+    .addField("Now", formatNumber(Number(amountAfter) / 1e8), true)
+    .addField(
+      "Change",
+      `${amountAfter - amountBefore < 0 ? "" : "+"}${formatNumber(Number(amountAfter - amountBefore) / 1e8)}`,
+      true,
+    )
+    .setColor("#FF0000")
+    .setThumbnail(image)
+    .setDescription(
+      `The balance of **${denom}** in wallet **${nickname}** has changed by **${percentageChange.toFixed(2)}%** compared to **${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago**.`,
+    )
+    .setTimestamp();
+  // .setText("@everyone");
+
+  return hook.send(embed);
 };

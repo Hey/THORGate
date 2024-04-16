@@ -17,7 +17,7 @@ export const findClosestTimeKey = async (
   const endTime = targetTime + margin * 60000;
   const pattern = `${redisKey}:time:*`;
   let closestKey = "";
-  let closestValue = BigInt(0);
+  let closestValue = BigInt(0); // Default to zero
   let closestDiff = Number.MAX_SAFE_INTEGER;
 
   let cursor = "0";
@@ -37,10 +37,16 @@ export const findClosestTimeKey = async (
         const diff = Math.abs(targetTime - timePart);
         if (diff < closestDiff) {
           const value = await redis.get(key);
-          if (value !== null) {
+          if (value !== null && /^\d+$/.test(value)) {
+            // Check if value is a numeric string
             closestKey = key;
-            closestValue = BigInt(value);
-            closestDiff = diff;
+            try {
+              closestValue = BigInt(value);
+              closestDiff = diff;
+            } catch (error) {
+              console.error(`Error converting value to BigInt: ${error}`);
+              continue;
+            }
           }
         }
       }
