@@ -62,12 +62,12 @@ const notify = async (
   percentageChange: number,
   minutesAgo: number,
 ) => {
-  const hook = getWebhook();
+  const { hook, embedBuilder } = getWebhook();
   const formattedAsset = asset.split("_").join(" ").toUpperCase();
   const image = `https://static.thorswap.net/token-list/images/${formattedAsset.toLowerCase().includes("tor") ? "eth.vthor-0x815c23eca83261b6ec689b60cc4a58b54bc24d8d" : "thor.rune"}.png`;
   const assetUrl = `https://viewblock.io/thorchain/${asset}`;
 
-  const embed = hook
+  const embed = embedBuilder
     .setTitle(`${formattedAsset} ${percentageChange.toFixed(2)}% Change`)
     .setURL(assetUrl)
     .addField("Before", formatNumberPrice(priceBefore), true)

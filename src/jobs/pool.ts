@@ -81,8 +81,9 @@ const notify = async (
   percentageChange: number,
   minutesAgo: number,
 ) => {
-  const hook = getWebhook();
-  const embed = hook
+  const { hook, embedBuilder } = getWebhook();
+
+  const embed = embedBuilder
     .setTitle(
       `${pool.split("-")[0]} ${percentageChange.toFixed(0)}% Change in ${property}`,
     )

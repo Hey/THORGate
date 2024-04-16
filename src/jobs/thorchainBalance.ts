@@ -124,12 +124,13 @@ async function notify(
   percentageChange: number,
   minutesAgo: number,
 ) {
-  const hook = getWebhook();
+  const { hook, embedBuilder } = getWebhook();
+
   const identifier = denom.toLowerCase().replace("/", ".");
   const image = `https://static.thorswap.net/token-list/images/${identifier}.png`;
   const url = `https://viewblock.io/thorchain/address/${address}`;
 
-  const embed = hook
+  const embed = embedBuilder
     .setTitle(`${nickname}: ${denom} ${percentageChange.toFixed(0)}% Change`)
     .setURL(url)
     .addField("Before", formatNumber(Number(amountBefore) / 1e8), true)

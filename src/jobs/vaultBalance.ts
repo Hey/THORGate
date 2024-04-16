@@ -72,11 +72,12 @@ const notify = async (
   minutesAgo: number,
   price: bigint | null,
 ) => {
-  const hook = getWebhook();
+  const { hook, embedBuilder } = getWebhook();
+
   const image = `https://static.thorswap.net/token-list/images/${asset.toLowerCase()}.png`;
   const poolUrl = `https://viewblock.io/thorchain/pool/${asset}`;
 
-  const embed = hook
+  const embed = embedBuilder
     .setTitle(`${asset.split("-")[0]} ${percentageChange.toFixed(0)}% Change`)
     .setURL(poolUrl)
     .addField(
