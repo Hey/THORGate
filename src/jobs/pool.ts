@@ -1,7 +1,7 @@
 import { getWebhook } from "../notifications";
 import { findClosestTimeKey, redis } from "../redis";
 import { fetchPools } from "../thorchain";
-import { formatNumber } from "../utils";
+import { DEFAULT_COMPARE_TIMES, formatNumber } from "../utils";
 
 interface Thresholds {
   [key: string]: {
@@ -21,7 +21,10 @@ const propertyThresholds: Thresholds = {
   // savers_depth: { percentage: 2 },
 };
 
-const compareAndAlertPools = async (compareTimes = [1, 10, 30, 60]) => {
+const compareAndAlertPools = async (
+  doNotAlert: boolean,
+  compareTimes = DEFAULT_COMPARE_TIMES,
+) => {
   const pools = await fetchPools();
   const currentTime = Date.now();
 
@@ -48,6 +51,8 @@ const compareAndAlertPools = async (compareTimes = [1, 10, 30, 60]) => {
           const diffPercentage = Number((diff * 100n) / historicalValue);
 
           if (diffPercentage >= propertyThresholds[property].percentage) {
+            if (doNotAlert) continue;
+
             console.log(
               `Significant change in ${property} of ${pool.asset}: ${diffPercentage}% (${formatNumber(Number(historicalValue))} -> ${formatNumber(Number(currentValue))}) over the last ${time} minutes.`,
             );
@@ -107,10 +112,10 @@ const notify = async (
   return hook.send(embed);
 };
 
-export const runPoolMonitoring = async () => {
+export const runPoolMonitoring = async (doNotAlert: boolean) => {
   console.log("Running pool monitoring...");
   try {
-    await compareAndAlertPools();
+    await compareAndAlertPools(doNotAlert);
     console.log("Pool monitoring completed.");
   } catch (error) {
     console.error("Error in pool monitoring:", error);

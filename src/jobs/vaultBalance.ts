@@ -2,11 +2,12 @@ import { getWebhook } from "../notifications";
 import getLatestPriceByAsset from "../prices";
 import { findClosestTimeKey, redis } from "../redis";
 import { Vault, fetchVaults } from "../thorchain";
-import { formatNumber } from "../utils";
+import { DEFAULT_COMPARE_TIMES, formatNumber } from "../utils";
 
 const compareAndAlert = async (
+  doNotAlert: boolean,
   vaults: Vault[],
-  compareTimes = [1, 10, 30, 60],
+  compareTimes = DEFAULT_COMPARE_TIMES,
 ) => {
   const coinSums = new Map();
   const currentTime = Date.now();
@@ -41,6 +42,8 @@ const compareAndAlert = async (
           const logMessage = usdChange
             ? `${asset}: ${diffPercentage.toFixed(2)}% change; USD Change: ${usdChange.toFixed(2)}`
             : `${asset}: ${diffPercentage.toFixed(2)}% change`;
+
+          if (doNotAlert) continue;
 
           await notify(
             asset,
@@ -112,11 +115,11 @@ const notify = async (
   return hook.send(embed);
 };
 
-export const runAsgardVaultBalance = async () => {
+export const runAsgardVaultBalance = async (doNotAlert: boolean) => {
   console.log("Running Asgard vault check...");
   try {
     const currentVaults = await fetchVaults();
-    await compareAndAlert(currentVaults);
+    await compareAndAlert(doNotAlert, currentVaults, DEFAULT_COMPARE_TIMES);
     console.log("Asgard vault check complete.");
   } catch (error) {
     console.error("Error in Asgard vault check:", error);

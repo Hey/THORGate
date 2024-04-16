@@ -2,7 +2,7 @@ import { findClosestTimeKey, redis } from "../redis";
 import { getWebhook } from "../notifications";
 import { Balance, fetchBalances } from "../thorchain";
 import getLatestPriceByAsset from "../prices";
-import { formatNumber } from "../utils";
+import { DEFAULT_COMPARE_TIMES, formatNumber } from "../utils";
 
 const wallets = new Map([
   [
@@ -36,10 +36,11 @@ const wallets = new Map([
 ]);
 
 async function compareAndAlert(
+  doNotAlert: boolean,
   address: string,
   balances: Balance[],
   minimumPercentage: number,
-  compareTimes = [1, 10, 30, 60],
+  compareTimes = DEFAULT_COMPARE_TIMES,
 ) {
   const currentTime = Date.now();
 
@@ -79,6 +80,12 @@ async function compareAndAlert(
             continue;
           }
 
+          if (doNotAlert) continue;
+
+          console.log(
+            `Big change in ${balance.denom} for ${address} (${wallets.get(address)?.name || address}) at ${time} minutes ago: ${diffPercentage.toFixed(2)}%`,
+          );
+
           await notify(
             balance.denom,
             address,
@@ -102,12 +109,12 @@ async function compareAndAlert(
   }
 }
 
-export async function runThorchainBalanceJob() {
+export async function runThorchainBalanceJob(doNotAlert: boolean) {
   for (const [address, { name, percentage }] of wallets) {
     console.log(`Checking balance for ${name}...`);
     try {
       const currentBalances = await fetchBalances(address);
-      await compareAndAlert(address, currentBalances, percentage);
+      await compareAndAlert(doNotAlert, address, currentBalances, percentage);
       console.log(`Balance check completed for ${name}.`);
     } catch (error) {
       console.error(`Error checking balance for ${name}: ${error}`);

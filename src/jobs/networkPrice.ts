@@ -1,14 +1,17 @@
 import { getWebhook } from "../notifications";
 import { findClosestTimeKey, redis } from "../redis";
 import { Network, fetchNetwork } from "../thorchain";
-import { formatNumberPrice } from "../utils";
+import { DEFAULT_COMPARE_TIMES, formatNumberPrice } from "../utils";
 
 interface Asset {
   key: keyof Network;
   scale: number;
 }
 
-const compareAndAlert = async (compareTimes = [1, 10, 30, 60]) => {
+const compareAndAlert = async (
+  doNotAlert: boolean,
+  compareTimes = DEFAULT_COMPARE_TIMES,
+) => {
   const currentTime = Date.now();
   const currentNetworkData: Network = await fetchNetwork();
   const assets: Asset[] = [
@@ -34,6 +37,8 @@ const compareAndAlert = async (compareTimes = [1, 10, 30, 60]) => {
         const diffPercentage = (diff * 100) / historicalPrice;
 
         if (diffPercentage >= 1) {
+          if (doNotAlert) continue;
+
           console.log(
             `${key}: Price changed by ${diffPercentage.toFixed(2)}% (${historicalPrice} -> ${currentPrice}) over the last ${time} minutes.`,
           );
@@ -87,10 +92,10 @@ const notify = async (
   return hook.send(embed);
 };
 
-export const runNetworkPrice = async () => {
+export const runNetworkPrice = async (doNotAlert: boolean) => {
   console.log("Running network price check...");
   try {
-    await compareAndAlert();
+    await compareAndAlert(doNotAlert);
     console.log("Network price check completed.");
   } catch (error) {
     console.error("Error in scheduled network price check:", error);

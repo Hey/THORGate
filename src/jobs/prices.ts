@@ -6,9 +6,12 @@ import {
   fetchPools,
   fetchRuneUSDPrice,
 } from "../thorchain";
-import { formatNumber } from "../utils";
+import { DEFAULT_COMPARE_TIMES, formatNumber } from "../utils";
 
-const monitorPrices = async () => {
+const monitorPrices = async (
+  doNotAlert: boolean,
+  compareTimes = DEFAULT_COMPARE_TIMES,
+) => {
   console.log("Starting price monitoring...");
 
   const pools = await fetchPools();
@@ -16,7 +19,6 @@ const monitorPrices = async () => {
   const derivedPools = await fetchDerivedPools();
 
   const allPools = [...pools, ...derivedPools];
-  const compareTimes = [1, 10, 30, 60]; // in minutes
   const currentTime = Date.now();
 
   for (const pool of allPools) {
@@ -51,6 +53,8 @@ const monitorPrices = async () => {
             Math.abs((priceInUSD - historicalPrice) / historicalPrice) * 100;
 
           if (percentageChange >= 5) {
+            if (doNotAlert) continue;
+
             console.log(`Alerting significant price change for ${pool.asset}`);
             await notify(
               pool.asset,
@@ -104,10 +108,10 @@ const notify = async (
   return hook.send(embed);
 };
 
-export const runPriceMonitoring = async () => {
+export const runPriceMonitoring = async (doNotAlert: boolean) => {
   console.log("Running price monitoring...");
   try {
-    await monitorPrices();
+    await monitorPrices(doNotAlert);
   } catch (error) {
     console.error("Error during price monitoring:", error);
   }
