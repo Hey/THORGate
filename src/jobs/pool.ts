@@ -53,7 +53,7 @@ const compareAndAlertPools = async (
             if (doNotAlert) continue;
 
             if (!(await notifyLock(redisKey)))
-              console.log(
+              return console.log(
                 `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
               );
 
