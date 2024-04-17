@@ -1,4 +1,5 @@
 import { MessageBuilder, Webhook } from "discord-webhook-node";
+import { redis } from "./redis";
 
 export const getWebhook = (): {
   hook: Webhook;
@@ -22,4 +23,29 @@ export const getWebhook = (): {
     hook,
     embedBuilder: embed,
   };
+};
+
+const setNotificationLock = async (
+  resource: string,
+  ttl: number = 3600,
+): Promise<string | null> => {
+  return redis.set(`notification-lock:${resource}`, "1", "EX", ttl);
+};
+
+const getNotificationLock = async (
+  resource: string,
+): Promise<string | null> => {
+  return redis.get(`notificaiton-lock:${resource}`);
+};
+
+// Returns false if lock was already active
+// Returns true if new lock was set
+export const notifyLock = async (resource: string, ttl: number = 3600) => {
+  const lock = await getNotificationLock(resource);
+  if (lock) {
+    return false;
+  }
+
+  await setNotificationLock(resource, ttl);
+  return true;
 };

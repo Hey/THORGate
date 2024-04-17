@@ -1,4 +1,4 @@
-import { getWebhook } from "../notifications";
+import { getWebhook, notifyLock } from "../notifications";
 import { findClosestTimeKey, redis } from "../redis";
 import { Network, fetchNetwork } from "../thorchain";
 import { DEFAULT_COMPARE_TIMES, formatNumberPrice } from "../utils";
@@ -38,6 +38,11 @@ const compareAndAlert = async (
 
         if (diffPercentage >= 1) {
           if (doNotAlert) continue;
+
+          if (!(await notifyLock(redisKey)))
+            console.log(
+              `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
+            );
 
           console.log(
             `${key}: Price changed by ${diffPercentage.toFixed(2)}% (${historicalPrice} -> ${currentPrice}) over the last ${time} minutes.`,

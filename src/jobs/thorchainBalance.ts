@@ -1,5 +1,5 @@
 import { findClosestTimeKey, redis } from "../redis";
-import { getWebhook } from "../notifications";
+import { getWebhook, notifyLock } from "../notifications";
 import { Balance, fetchBalances } from "../thorchain";
 import getLatestPriceByAsset from "../prices";
 import { DEFAULT_COMPARE_TIMES, formatNumber } from "../utils";
@@ -81,6 +81,11 @@ async function compareAndAlert(
           }
 
           if (doNotAlert) continue;
+
+          if (!(await notifyLock(redisKey)))
+            console.log(
+              `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
+            );
 
           console.log(
             `Big change in ${balance.denom} for ${address} (${wallets.get(address)?.name || address}) at ${time} minutes ago: ${diffPercentage.toFixed(2)}%`,

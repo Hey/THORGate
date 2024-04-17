@@ -14,4 +14,3 @@ export const formatNumberPrice = (num: number) => {
 };
 
 export const DEFAULT_COMPARE_TIMES = [1, 10, 30, 60];
-// export const DEFAULT_COMPARE_TIMES = [10];

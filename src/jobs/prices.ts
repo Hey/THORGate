@@ -1,4 +1,4 @@
-import { getWebhook } from "../notifications";
+import { getWebhook, notifyLock } from "../notifications";
 import { redis, findClosestTimeKey } from "../redis";
 import {
   calculatePriceInUSD,
@@ -54,6 +54,11 @@ const monitorPrices = async (
 
           if (percentageChange >= 5) {
             if (doNotAlert) continue;
+
+            if (!(await notifyLock(redisKey)))
+              console.log(
+                `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
+              );
 
             console.log(`Alerting significant price change for ${pool.asset}`);
             await notify(

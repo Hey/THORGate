@@ -1,4 +1,4 @@
-import { getWebhook } from "../notifications";
+import { getWebhook, notifyLock } from "../notifications";
 import getLatestPriceByAsset from "../prices";
 import { findClosestTimeKey, redis } from "../redis";
 import { Vault, fetchVaults } from "../thorchain";
@@ -38,12 +38,17 @@ const compareAndAlert = async (
         const diffPercentage = Number((diff * 100n) / historicalSum);
 
         if (diffPercentage >= 10) {
-          const usdChange = price ? Number(diff * price) / 1e8 : null;
-          const logMessage = usdChange
-            ? `${asset}: ${diffPercentage.toFixed(2)}% change; USD Change: ${usdChange.toFixed(2)}`
-            : `${asset}: ${diffPercentage.toFixed(2)}% change`;
+          // const usdChange = price ? Number(diff * price) / 1e8 : null;
+          // const logMessage = usdChange
+          //   ? `${asset}: ${diffPercentage.toFixed(2)}% change; USD Change: ${usdChange.toFixed(2)}`
+          //   : `${asset}: ${diffPercentage.toFixed(2)}% change`;
 
           if (doNotAlert) continue;
+
+          if (!(await notifyLock(redisKey)))
+            console.log(
+              `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
+            );
 
           await notify(
             asset,

@@ -1,4 +1,4 @@
-import { getWebhook } from "../notifications";
+import { getWebhook, notifyLock } from "../notifications";
 import { findClosestTimeKey, redis } from "../redis";
 import { fetchPools } from "../thorchain";
 import { DEFAULT_COMPARE_TIMES, formatNumber } from "../utils";
@@ -12,7 +12,6 @@ interface Thresholds {
 const propertyThresholds: Thresholds = {
   balance_asset: { percentage: 5 },
   balance_rune: { percentage: 5 },
-  // Additional properties can be uncommented or added as needed
   // pool_units: { percentage: 3 },
   // LP_units: { percentage: 2 },
   // synth_units: { percentage: 10 },
@@ -52,6 +51,11 @@ const compareAndAlertPools = async (
 
           if (diffPercentage >= propertyThresholds[property].percentage) {
             if (doNotAlert) continue;
+
+            if (!(await notifyLock(redisKey)))
+              console.log(
+                `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
+              );
 
             console.log(
               `Significant change in ${property} of ${pool.asset}: ${diffPercentage}% (${formatNumber(Number(historicalValue))} -> ${formatNumber(Number(currentValue))}) over the last ${time} minutes.`,
