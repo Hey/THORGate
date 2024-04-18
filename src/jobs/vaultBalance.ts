@@ -37,6 +37,8 @@ const compareAndAlert = async (
             : historicalSum - totalSum;
         const diffPercentage = Number((diff * 100n) / historicalSum);
 
+        if (diff === BigInt(0)) continue console.log(`[VAULT BALANCE] No change in ${asset} balance`);
+
         if (diffPercentage >= 10) {
           // const usdChange = price ? Number(diff * price) / 1e8 : null;
           // const logMessage = usdChange
