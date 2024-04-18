@@ -35,7 +35,7 @@ const setNotificationLock = async (
 const getNotificationLock = async (
   resource: string,
 ): Promise<string | null> => {
-  return redis.get(`notificaiton-lock:${resource}`);
+  return redis.get(`notification-lock:${resource}`);
 };
 
 // Returns false if lock was already active
