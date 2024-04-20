@@ -97,8 +97,8 @@ const notify = async (
       `${pool.split("-")[0]} ${percentageChange.toFixed(0)}% Change in ${property}`,
     )
     .setURL(`https://viewblock.io/thorchain/pool/${pool}`)
-    .addField("Before", `$${formatNumber(Number(valueBefore) / 1e8)}`, true)
-    .addField("Now", `$${formatNumber(Number(valueAfter) / 1e8)}`, true)
+    .addField("Before", `${formatNumber(Number(valueBefore) / 1e8)}`, true)
+    .addField("Now", `${formatNumber(Number(valueAfter) / 1e8)}`, true)
     .addField(
       "Change",
       `${valueAfter > valueBefore ? "+" : ""}${formatNumber(Number(valueAfter - valueBefore) / 1e8)}`,

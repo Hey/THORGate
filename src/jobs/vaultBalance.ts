@@ -43,12 +43,18 @@ const compareAndAlert = async (
         }
 
         if (diffPercentage >= 10) {
-          // const usdChange = price ? Number(diff * price) / 1e8 : null;
+          if (doNotAlert) continue;
+
+          const usdChange = price ? Number(diff * price) / 1e8 : null;
           // const logMessage = usdChange
           //   ? `${asset}: ${diffPercentage.toFixed(2)}% change; USD Change: ${usdChange.toFixed(2)}`
           //   : `${asset}: ${diffPercentage.toFixed(2)}% change`;
-
-          if (doNotAlert) continue;
+          if (usdChange && usdChange < 100_000) {
+            console.log(
+              `[VAULT BALANCE] Low USD difference for ${asset}, only ${usdChange} USD.`,
+            );
+            continue;
+          }
 
           if (!(await notifyLock(redisKey)))
             return console.log(
@@ -90,6 +96,14 @@ const notify = async (
   const image = `https://static.thorswap.net/token-list/images/${asset.toLowerCase()}.png`;
   const poolUrl = `https://viewblock.io/thorchain/pool/${asset}`;
 
+  const ticker = asset.split("-")[0].split(".")[1];
+
+  const usdBefore = price ? Number(amountBefore * price) / 1e8 : null;
+  const usdAfter = price ? Number(amountAfter * price) / 1e8 : null;
+  const usdChange = price
+    ? Number((amountAfter - amountBefore) * price) / 1e8
+    : null;
+
   const embed = embedBuilder
     .setTitle(
       `${asset.split("-")[0]} Pool ${percentageChange.toFixed(0)}% Change`,
@@ -97,17 +111,17 @@ const notify = async (
     .setURL(poolUrl)
     .addField(
       "Before",
-      `${formatNumber(Number(amountBefore) / 1e8)} ${asset.split("-")[0].split(".")[1]}`,
+      `${usdBefore ? `$${usdBefore.toFixed(2)}\n` : ""}${formatNumber(Number(amountBefore) / 1e8)} ${ticker}`,
       true,
     )
     .addField(
       "Now",
-      `${formatNumber(Number(amountAfter) / 1e8)} ${asset.split("-")[0].split(".")[1]}`,
+      `${usdAfter ? `$${usdAfter.toFixed(2)}\n` : ""}${formatNumber(Number(amountAfter) / 1e8)} ${ticker}`,
       true,
     )
     .addField(
       "Change",
-      `${amountAfter - amountBefore >= 0 ? "+" : ""}${formatNumber(Number(amountAfter - amountBefore) / 1e8)}`,
+      `${usdChange ? `$${usdChange.toFixed(2)}\n` : ""}${amountAfter - amountBefore >= 0 ? "+" : ""}${formatNumber(Number(amountAfter - amountBefore) / 1e8)}`,
       true,
     )
     .setColor("#FF0000")
