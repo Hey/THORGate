@@ -73,7 +73,7 @@ async function compareAndAlert(
             continue;
           }
 
-          if (diff * price < 100_000 * 1e8) {
+          if (diff * price < 10_000 * 1e8) {
             console.log(
               `[BALANCE] Low USD difference for ${balance.denom}, only ${Number(diff * price) / 1e8} USD.`,
             );

@@ -49,7 +49,7 @@ const compareAndAlert = async (
           // const logMessage = usdChange
           //   ? `${asset}: ${diffPercentage.toFixed(2)}% change; USD Change: ${usdChange.toFixed(2)}`
           //   : `${asset}: ${diffPercentage.toFixed(2)}% change`;
-          if (usdChange && usdChange < 100_000) {
+          if (usdChange && usdChange < 10_000) {
             console.log(
               `[VAULT BALANCE] Low USD difference for ${asset}, only ${usdChange} USD.`,
             );
