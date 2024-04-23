@@ -65,20 +65,20 @@ async function compareAndAlert(
         const diffPercentage = Number((diff * 100n) / historicalAmount);
 
         if (diffPercentage >= minimumPercentage) {
-          const price = await getLatestPriceByAsset(balance.denom);
-          if (!price) {
-            console.log(
-              `[BALANCE] Skipping ${balance.denom} due to missing price data.`,
-            );
-            continue;
-          }
+          // const price = await getLatestPriceByAsset(balance.denom);
+          // if (!price) {
+          //   console.log(
+          //     `[BALANCE] Skipping ${balance.denom} due to missing price data.`,
+          //   );
+          //   continue;
+          // }
 
-          if (diff * price < 10_000 * 1e8) {
-            console.log(
-              `[BALANCE] Low USD difference for ${balance.denom}, only ${Number(diff * price) / 1e8} USD.`,
-            );
-            continue;
-          }
+          // if (diff * price < 10_000 * 1e8) {
+          //   console.log(
+          //     `[BALANCE] Low USD difference for ${balance.denom}, only ${Number(diff * price) / 1e8} USD.`,
+          //   );
+          //   continue;
+          // }
 
           if (doNotAlert) continue;
 

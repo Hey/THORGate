@@ -45,16 +45,13 @@ const compareAndAlert = async (
         if (diffPercentage >= 10) {
           if (doNotAlert) continue;
 
-          const usdChange = price ? Number(diff * price) / 1e8 : null;
-          // const logMessage = usdChange
-          //   ? `${asset}: ${diffPercentage.toFixed(2)}% change; USD Change: ${usdChange.toFixed(2)}`
-          //   : `${asset}: ${diffPercentage.toFixed(2)}% change`;
-          if (usdChange && usdChange < 10_000) {
-            console.log(
-              `[VAULT BALANCE] Low USD difference for ${asset}, only ${usdChange} USD.`,
-            );
-            continue;
-          }
+          // const usdChange = price ? Number(diff * price) / 1e8 : null;
+          // if (usdChange && usdChange < 10_000) {
+          //   console.log(
+          //     `[VAULT BALANCE] Low USD difference for ${asset}, only ${usdChange} USD.`,
+          //   );
+          //   continue;
+          // }
 
           if (!(await notifyLock(redisKey)))
             return console.log(
