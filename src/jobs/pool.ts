@@ -52,10 +52,12 @@ const compareAndAlertPools = async (
           if (diffPercentage >= propertyThresholds[property].percentage) {
             if (doNotAlert) continue;
 
-            if (!(await notifyLock(redisKey)))
-              return console.log(
+            if (!(await notifyLock(redisKey))) {
+              console.log(
                 `Notification lock for ${redisKey} already exists, not sending notification.`,
               );
+              continue;
+            }
 
             console.log(
               `Significant change in ${property} of ${pool.asset}: ${diffPercentage}% (${formatNumber(Number(historicalValue))} -> ${formatNumber(Number(currentValue))}) over the last ${time} minutes.`,

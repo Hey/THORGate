@@ -102,10 +102,12 @@ async function compareAndAlert(
             continue;
           }
 
-          if (!(await notifyLock(redisKey)))
-            return console.log(
+          if (!(await notifyLock(redisKey))) {
+            console.log(
               `Notification lock for ${redisKey} already exists, not sending notification.`,
             );
+            continue;
+          }
 
           console.log(
             `Big change in ${balance.denom} for ${address} (${wallets.get(address)?.name || address}) at ${time} minutes ago: ${diffPercentage.toFixed(2)}%`,

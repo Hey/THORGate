@@ -68,10 +68,12 @@ const compareAndAlert = async (
             continue;
           }
 
-          if (!(await notifyLock(redisKey)))
-            return console.log(
+          if (!(await notifyLock(redisKey))) {
+            console.log(
               `Notification lock for ${redisKey} already exists, not sending notification.`,
             );
+            continue;
+          }
 
           await notify(
             asset,

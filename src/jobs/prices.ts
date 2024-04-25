@@ -55,10 +55,12 @@ const monitorPrices = async (
           if (percentageChange >= 5) {
             if (doNotAlert) continue;
 
-            if (!(await notifyLock(redisKey)))
-              return console.log(
+            if (!(await notifyLock(redisKey))) {
+              console.log(
                 `Notification lock for ${redisKey} already exists, not sending notification.`,
               );
+              continue;
+            }
 
             console.log(`Alerting significant price change for ${pool.asset}`);
             await notify(
