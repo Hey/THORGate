@@ -1,5 +1,5 @@
 import { getWebhook, notifyLock } from "../notifications";
-import getLatestPriceByAsset from "../prices";
+import { getAveragePriceByAsset, getLatestPriceByAsset } from "../prices";
 import { findClosestTimeKey, redis } from "../redis";
 import { Vault, fetchVaults } from "../thorchain";
 import { DEFAULT_COMPARE_TIMES, formatNumber } from "../utils";
@@ -20,7 +20,6 @@ const compareAndAlert = async (
   );
 
   for (const [asset, totalSum] of coinSums) {
-    const price = await getLatestPriceByAsset(asset);
     const redisKey = `pool:${asset}`;
 
     for (const time of compareTimes) {
@@ -38,24 +37,40 @@ const compareAndAlert = async (
         const diffPercentage = Number((diff * 100n) / historicalSum);
 
         if (diff === BigInt(0)) {
-          console.log(`[VAULT BALANCE] No change in ${asset} balance`);
+          // console.log(`[VAULT BALANCE] No change in ${asset} balance`);
           continue;
         }
 
         if (diffPercentage >= 10) {
           if (doNotAlert) continue;
 
-          // const usdChange = price ? Number(diff * price) / 1e8 : null;
-          // if (usdChange && usdChange < 10_000) {
-          //   console.log(
-          //     `[VAULT BALANCE] Low USD difference for ${asset}, only ${usdChange} USD.`,
-          //   );
-          //   continue;
-          // }
+          const price = await getAveragePriceByAsset(asset);
+          if (!price) {
+            console.log(
+              `[BALANCE] Skipping ${asset} due to missing price data.`,
+            );
+            continue;
+          }
+
+          console.log(`
+            asset: ${asset}
+            historicalSum: ${historicalSum}
+            totalSum: ${totalSum}
+            diff: ${diff}
+            diffPercentage: ${diffPercentage}
+            price: ${price}
+            `);
+
+          if (diff * BigInt(price) < 10000n) {
+            console.log(
+              `[BALANCE] Skipping ${asset} due to too little USD change (${(diff * BigInt(price)) / BigInt(1e8)} USD).`,
+            );
+            continue;
+          }
 
           if (!(await notifyLock(redisKey)))
             return console.log(
-              `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
+              `Notification lock for ${redisKey} already exists, not sending notification.`,
             );
 
           await notify(
@@ -144,5 +159,6 @@ export const runAsgardVaultBalance = async (doNotAlert: boolean) => {
     console.log("Asgard vault check complete.");
   } catch (error) {
     console.error("Error in Asgard vault check:", error);
+    console.error(error);
   }
 };

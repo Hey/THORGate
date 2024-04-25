@@ -57,7 +57,7 @@ const monitorPrices = async (
 
             if (!(await notifyLock(redisKey)))
               return console.log(
-                `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
+                `Notification lock for ${redisKey} already exists, not sending notification.`,
               );
 
             console.log(`Alerting significant price change for ${pool.asset}`);
@@ -119,5 +119,6 @@ export const runPriceMonitoring = async (doNotAlert: boolean) => {
     await monitorPrices(doNotAlert);
   } catch (error) {
     console.error("Error during price monitoring:", error);
+    console.error(error);
   }
 };

@@ -1,13 +1,13 @@
 import { findClosestTimeKey, redis } from "../redis";
 import { getWebhook, notifyLock } from "../notifications";
 import { Balance, fetchBalances } from "../thorchain";
-import getLatestPriceByAsset from "../prices";
+import { getAveragePriceByAsset } from "../prices";
 import { DEFAULT_COMPARE_TIMES, formatNumber } from "../utils";
 
 const wallets = new Map([
   [
     "thor1g98cy3n9mmjrpn0sxmn63lztelera37n8n67c0",
-    { name: "Pool Module", percentage: 3 },
+    { name: "Pool Module", percentage: 1 },
   ],
   [
     "thor1dheycdevq39qlkxs2a6wuuzyn4aqxhve4qxtxt",
@@ -56,35 +56,55 @@ async function compareAndAlert(
         closestHistoricalData.key &&
         BigInt(closestHistoricalData.value) > 0
       ) {
-        const historicalAmount = BigInt(closestHistoricalData.value);
-        const currentAmount = BigInt(balance.amount);
+        const historicalAmount =
+          BigInt(closestHistoricalData.value) / BigInt(1e8);
+        const currentAmount = BigInt(balance.amount) / BigInt(1e8);
         const diff =
           currentAmount > historicalAmount
             ? currentAmount - historicalAmount
             : historicalAmount - currentAmount;
-        const diffPercentage = Number((diff * 100n) / historicalAmount);
+
+        if (diff === 0n) {
+          // console.log(
+          //   `[BALANCE] Skipping ${balance.denom} due to no change in balance.`,
+          // );
+          continue;
+        }
+        const diffPercentage = Number(
+          (Number(diff) / Number(historicalAmount)) * 100,
+        );
+
+        // console.log(`
+        //   balance: ${balance.denom}
+        //   historicalAmount: ${historicalAmount}
+        //   currentAmount: ${currentAmount}
+        //   diff: ${diff}
+        //   diffPercentage: ${diffPercentage}
+        //   `);
 
         if (diffPercentage >= minimumPercentage) {
-          // const price = await getLatestPriceByAsset(balance.denom);
-          // if (!price) {
-          //   console.log(
-          //     `[BALANCE] Skipping ${balance.denom} due to missing price data.`,
-          //   );
-          //   continue;
-          // }
-
-          // if (diff * price < 10_000 * 1e8) {
-          //   console.log(
-          //     `[BALANCE] Low USD difference for ${balance.denom}, only ${Number(diff * price) / 1e8} USD.`,
-          //   );
-          //   continue;
-          // }
-
           if (doNotAlert) continue;
+
+          const price = await getAveragePriceByAsset(balance.denom);
+          if (!price) {
+            console.log(
+              `[BALANCE] Skipping ${balance.denom} due to missing price data.`,
+            );
+            continue;
+          }
+
+          const diffUSD = Number(diff) * price;
+
+          if (diffUSD < 10000) {
+            console.log(
+              `[BALANCE] Skipping ${balance.denom} due to too little USD change (${diffUSD.toFixed(2)}).`,
+            );
+            continue;
+          }
 
           if (!(await notifyLock(redisKey)))
             return console.log(
-              `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
+              `Notification lock for ${redisKey} already exists, not sending notification.`,
             );
 
           console.log(
@@ -123,6 +143,7 @@ export async function runThorchainBalanceJob(doNotAlert: boolean) {
       console.log(`Balance check completed for ${name}.`);
     } catch (error) {
       console.error(`Error checking balance for ${name}: ${error}`);
+      console.error(error);
     }
   }
 }

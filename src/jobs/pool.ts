@@ -54,7 +54,7 @@ const compareAndAlertPools = async (
 
             if (!(await notifyLock(redisKey)))
               return console.log(
-                `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
+                `Notification lock for ${redisKey} already exists, not sending notification.`,
               );
 
             console.log(
@@ -123,5 +123,6 @@ export const runPoolMonitoring = async (doNotAlert: boolean) => {
     console.log("Pool monitoring completed.");
   } catch (error) {
     console.error("Error in pool monitoring:", error);
+    console.error(error);
   }
 };

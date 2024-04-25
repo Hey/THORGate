@@ -41,7 +41,7 @@ const compareAndAlert = async (
 
           if (!(await notifyLock(redisKey)))
             return console.log(
-              `Notification lock for ${redisKey} already exists, not sending notificaiton.`,
+              `Notification lock for ${redisKey} already exists, not sending notification.`,
             );
 
           console.log(
@@ -104,5 +104,6 @@ export const runNetworkPrice = async (doNotAlert: boolean) => {
     console.log("Network price check completed.");
   } catch (error) {
     console.error("Error in scheduled network price check:", error);
+    console.error(error);
   }
 };
