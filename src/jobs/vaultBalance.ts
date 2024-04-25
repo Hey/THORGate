@@ -52,14 +52,14 @@ const compareAndAlert = async (
             continue;
           }
 
-          console.log(`
-            asset: ${asset}
-            historicalSum: ${historicalSum}
-            totalSum: ${totalSum}
-            diff: ${diff}
-            diffPercentage: ${diffPercentage}
-            price: ${price}
-            `);
+          // console.log(`
+          //   asset: ${asset}
+          //   historicalSum: ${historicalSum}
+          //   totalSum: ${totalSum}
+          //   diff: ${diff}
+          //   diffPercentage: ${diffPercentage}
+          //   price: ${price}
+          //   `);
 
           if (diff * BigInt(price) < 10000n) {
             console.log(
@@ -79,7 +79,7 @@ const compareAndAlert = async (
             totalSum,
             diffPercentage,
             time,
-            price,
+            BigInt(price),
           );
           await new Promise((resolve) => setTimeout(resolve, 1000)); // Cooldown between notifications
         }
