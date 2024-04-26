@@ -2,7 +2,11 @@ import { findClosestTimeKey, redis } from "../redis";
 import { getWebhook, notifyLock } from "../notifications";
 import { Balance, fetchBalances } from "../thorchain";
 import { getAveragePriceByAsset } from "../prices";
-import { DEFAULT_COMPARE_TIMES, formatNumber } from "../utils";
+import {
+  DEFAULT_COMPARE_TIMES,
+  formatBalanceWithUSD,
+  formatNumber,
+} from "../utils";
 
 const wallets = new Map([
   [
@@ -64,7 +68,7 @@ async function compareAndAlert(
             ? currentAmount - historicalAmount
             : historicalAmount - currentAmount;
 
-        if (diff === 0n || (historicalAmount === 0n && currentAmount === 0n)) {
+        if (diff === 0n) {
           // console.log(
           //   `[BALANCE] Skipping ${balance.denom} due to no change in balance, or both balances are 0. (${historicalAmount} -> ${currentAmount})`,
           // );
@@ -75,7 +79,7 @@ async function compareAndAlert(
           (Number(diff) / Number(historicalAmount)) * 100,
         );
 
-        if (diffPercentage >= minimumPercentage) {
+        if (diffPercentage >= 5) {
           if (doNotAlert) continue;
 
           const price = await getAveragePriceByAsset(balance.denom);
@@ -111,7 +115,9 @@ async function compareAndAlert(
             address,
             wallets.get(address)?.name || address,
             historicalAmount,
+            price ? historicalAmount * BigInt(price) : null,
             currentAmount,
+            price ? currentAmount * BigInt(price) : null,
             diffPercentage,
             time,
           );
@@ -129,6 +135,59 @@ async function compareAndAlert(
   }
 }
 
+async function notify(
+  denom: string,
+  address: string,
+  nickname: string,
+  amountBefore: bigint,
+  amountBeforeUSD: bigint | null,
+  amountAfter: bigint,
+  amountAfterUSD: bigint | null,
+  percentageChange: number,
+  minutesAgo: number,
+) {
+  const { hook, embedBuilder } = getWebhook();
+
+  const identifier = denom.toLowerCase().replace("/", ".");
+  const image = `https://static.thorswap.net/token-list/images/${identifier}.png`;
+  const url = `https://viewblock.io/thorchain/address/${address}`;
+
+  const changeAmount = amountAfter - amountBefore;
+  const changeUSD =
+    amountAfterUSD !== null && amountBeforeUSD !== null
+      ? amountAfterUSD - amountBeforeUSD
+      : null;
+
+  const embed = embedBuilder
+    .setTitle(
+      `${nickname}: ${denom} ${percentageChange.toFixed(0)}% Balance Change`,
+    )
+    .setURL(url)
+    .addField(
+      "Before",
+      formatBalanceWithUSD(amountBefore, amountBeforeUSD, denom),
+      true,
+    )
+    .addField(
+      "Now",
+      formatBalanceWithUSD(amountAfter, amountAfterUSD, denom),
+      true,
+    )
+    .addField(
+      "Change",
+      `${changeAmount < 0n ? "" : "+"}${formatBalanceWithUSD(changeAmount, changeUSD, denom)}`,
+      true,
+    )
+    .setColor("#FF0000")
+    .setThumbnail(image)
+    .setDescription(
+      `The balance of **${denom}** in wallet **${nickname}** has changed by **${percentageChange.toFixed(2)}%** over the past ${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago.`,
+    )
+    .setTimestamp();
+
+  return hook.send(embed);
+}
+
 export async function runThorchainBalanceJob(doNotAlert: boolean) {
   for (const [address, { name, percentage }] of wallets) {
     console.log(`Checking balance for ${name}...`);
@@ -141,41 +200,4 @@ export async function runThorchainBalanceJob(doNotAlert: boolean) {
       console.error(error);
     }
   }
-}
-
-async function notify(
-  denom: string,
-  address: string,
-  nickname: string,
-  amountBefore: bigint,
-  amountAfter: bigint,
-  percentageChange: number,
-  minutesAgo: number,
-) {
-  const { hook, embedBuilder } = getWebhook();
-
-  const identifier = denom.toLowerCase().replace("/", ".");
-  const image = `https://static.thorswap.net/token-list/images/${identifier}.png`;
-  const url = `https://viewblock.io/thorchain/address/${address}`;
-
-  const embed = embedBuilder
-    .setTitle(
-      `${nickname}: ${denom} ${percentageChange.toFixed(0)}% Balance Change`,
-    )
-    .setURL(url)
-    .addField("Before", formatNumber(Number(amountBefore)), true)
-    .addField("Now", formatNumber(Number(amountAfter)), true)
-    .addField(
-      "Change",
-      `${amountAfter - amountBefore < 0 ? "" : "+"}${formatNumber(Number(amountAfter - amountBefore))}`,
-      true,
-    )
-    .setColor("#FF0000")
-    .setThumbnail(image)
-    .setDescription(
-      `The balance of **${denom}** in wallet **${nickname}** has changed by **${percentageChange.toFixed(2)}%** over the past ${minutesAgo === 1 ? "a minute" : `${minutesAgo} minutes`} ago.`,
-    )
-    .setTimestamp();
-
-  return hook.send(embed);
 }

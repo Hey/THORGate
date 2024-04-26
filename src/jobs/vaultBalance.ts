@@ -112,43 +112,42 @@ const notify = async (
 
   const ticker = asset.split("-")[0].split(".")[1];
 
-  const usdBefore = price ? Number(amountBefore * price) / 1e8 : null;
-  const usdAfter = price ? Number(amountAfter * price) / 1e8 : null;
+  const convertToUSD = (amount: BigInt, price: BigInt) =>
+    price ? `$${(Number(amount * price) / 1e8).toFixed(2)}` : null;
+
+  const formatAssetAmount = (amount: BigInt) =>
+    `${formatNumber(Number(amount) / 1e8)} ${ticker}`;
+
+  const usdBefore = convertToUSD(amountBefore, price);
+  const usdAfter = convertToUSD(amountAfter, price);
   const usdChange = price
-    ? Number((amountAfter - amountBefore) * price) / 1e8
+    ? convertToUSD(amountAfter - amountBefore, price)
     : null;
 
   const embed = embedBuilder
-    .setTitle(
-      `${asset.split("-")[0]} Pool ${percentageChange.toFixed(0)}% Change`,
-    )
+    .setTitle(`${ticker} Pool ${percentageChange.toFixed(0)}% Change`)
     .setURL(poolUrl)
     .addField(
       "Before",
-      `${usdBefore ? `$${usdBefore.toFixed(2)}\n` : ""}${formatNumber(Number(amountBefore) / 1e8)} ${ticker}`,
+      `${usdBefore ? `${usdBefore}\n` : ""}${formatAssetAmount(amountBefore)}`,
       true,
     )
     .addField(
       "Now",
-      `${usdAfter ? `$${usdAfter.toFixed(2)}\n` : ""}${formatNumber(Number(amountAfter) / 1e8)} ${ticker}`,
+      `${usdAfter ? `${usdAfter}\n` : ""}${formatAssetAmount(amountAfter)}`,
       true,
     )
     .addField(
       "Change",
-      `${usdChange ? `$${usdChange.toFixed(2)}\n` : ""}${amountAfter - amountBefore >= 0 ? "+" : ""}${formatNumber(Number(amountAfter - amountBefore) / 1e8)}`,
+      `${usdChange ? `${usdChange}\n` : ""}${amountAfter - amountBefore >= 0n ? "+" : ""}${formatAssetAmount(amountAfter - amountBefore)}`,
       true,
     )
     .setColor("#FF0000")
     .setThumbnail(image)
     .setDescription(
-      `The **${asset}** pool has changed by **${percentageChange.toFixed(2)}%** over the past **${minutesAgo}** minutes.`,
+      `The **${ticker}** pool has changed by **${percentageChange.toFixed(2)}%** over the past **${minutesAgo}** minutes.`,
     )
     .setTimestamp();
-
-  if (price) {
-    const usdValue = Number(amountAfter * price) / 1e8;
-    embed.addField("USD Value", `$${usdValue.toFixed(2)}`, true);
-  }
 
   return hook.send(embed);
 };
