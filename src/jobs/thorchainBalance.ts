@@ -163,11 +163,11 @@ async function notify(
       `${nickname}: ${denom} ${percentageChange.toFixed(0)}% Balance Change`,
     )
     .setURL(url)
-    .addField("Before", formatNumber(Number(amountBefore) / 1e8), true)
-    .addField("Now", formatNumber(Number(amountAfter) / 1e8), true)
+    .addField("Before", formatNumber(Number(amountBefore)), true)
+    .addField("Now", formatNumber(Number(amountAfter)), true)
     .addField(
       "Change",
-      `${amountAfter - amountBefore < 0 ? "" : "+"}${formatNumber(Number(amountAfter - amountBefore) / 1e8)}`,
+      `${amountAfter - amountBefore < 0 ? "" : "+"}${formatNumber(Number(amountAfter - amountBefore))}`,
       true,
     )
     .setColor("#FF0000")
