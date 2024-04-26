@@ -64,23 +64,16 @@ async function compareAndAlert(
             ? currentAmount - historicalAmount
             : historicalAmount - currentAmount;
 
-        if (diff === 0n) {
+        if (diff === 0n || (historicalAmount === 0n && currentAmount === 0n)) {
           // console.log(
-          //   `[BALANCE] Skipping ${balance.denom} due to no change in balance.`,
+          //   `[BALANCE] Skipping ${balance.denom} due to no change in balance, or both balances are 0. (${historicalAmount} -> ${currentAmount})`,
           // );
           continue;
         }
+
         const diffPercentage = Number(
           (Number(diff) / Number(historicalAmount)) * 100,
         );
-
-        // console.log(`
-        //   balance: ${balance.denom}
-        //   historicalAmount: ${historicalAmount}
-        //   currentAmount: ${currentAmount}
-        //   diff: ${diff}
-        //   diffPercentage: ${diffPercentage}
-        //   `);
 
         if (diffPercentage >= minimumPercentage) {
           if (doNotAlert) continue;
